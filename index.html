@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ceník Oprav v2.3</title>
+    <title>B2B Ceník Oprav v2.5</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- PapaParse for CSV -->
@@ -15,6 +15,7 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            padding-bottom: 80px; /* Přidáme místo pro logo dole */
         }
         .progress-bar-value {
             transition: width 0.5s ease-in-out;
@@ -26,6 +27,10 @@
             font-weight: 600;
             border-color: #4f46e5;
         }
+        /* Oprava pro hover stav aktivního tlačítka, aby se nepřepsal */
+        .device-btn.active:hover {
+            background-color: #4338ca; /* indigo-700 */
+        }
         /* Animace pro zobrazení detailů */
         #details-section {
             transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
@@ -36,19 +41,19 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-white text-slate-800">
 
     <div class="container mx-auto p-4 md:p-8 max-w-6xl">
         
         <!-- Hlavička -->
         <header class="mb-8 text-center">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Ceník Oprav</h1>
-            <p class="text-slate-600 mt-2">Vyber zařízení ze seznamu pro zobrazení detailů a cen.</p>
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Interaktivní Ceník Oprav</h1>
+            <p class="text-slate-600 mt-2">Vyberte zařízení ze seznamu pro zobrazení detailů a cen.</p>
         </header>
 
         <!-- Sekce pro načítání dat -->
         <div id="loading-section" class="w-full max-w-md mx-auto">
-            <p class="text-center text-lg font-medium mb-2">Načítání dat z databáze ceníku dílů...</p>
+            <p class="text-center text-lg font-medium mb-2">Načítání dat z databáze...</p>
             <div class="w-full bg-slate-200 rounded-full h-2.5">
                 <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full progress-bar-value" style="width: 0%"></div>
             </div>
@@ -58,7 +63,7 @@
         <main id="app-content" class="hidden">
             <!-- Horní výběr zařízení -->
             <div class="mb-8">
-                <h2 class="text-lg font-semibold mb-4 text-slate-700 text-center md:text-xl">Vyber model zařízení</h2>
+                <h2 class="text-lg font-semibold mb-4 text-slate-700 text-center md:text-xl">Vyberte model zařízení</h2>
                 <div id="device-list" class="flex items-center justify-center flex-wrap gap-3">
                     <!-- Tlačítka zařízení se generují zde -->
                 </div>
@@ -66,13 +71,13 @@
 
             <!-- Sekce s detaily -->
             <section>
-                <div id="details-section" class="details-hidden bg-white p-6 rounded-2xl shadow-lg">
+                <div id="details-section" class="details-hidden bg-white p-6 rounded-2xl shadow-lg border border-slate-200">
                     <!-- Placeholder, pokud není nic vybráno -->
                     <div id="placeholder" class="text-center py-16">
                         <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
-                        <h3 class="mt-2 text-sm font-medium text-slate-900">Vyber zařízení</h3>
+                        <h3 class="mt-2 text-sm font-medium text-slate-900">Vyberte zařízení</h3>
                         <p class="mt-1 text-sm text-slate-500">Ceník se zobrazí po výběru modelu z horního menu.</p>
                     </div>
                     <!-- Kontejner pro výsledky -->
@@ -82,6 +87,13 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Logo firmy v pravém dolním rohu -->
+    <div class="fixed bottom-5 right-5 z-10">
+        <a href="#" target="_blank" rel="noopener noreferrer">
+            <img src="https://github.com/F1lDa-bot/ceny-dilu-apple/blob/main/SMARTY_LOGO.jpg?raw=true" alt="Logo firmy" class="h-12 opacity-75 hover:opacity-100 transition-opacity">
+        </a>
     </div>
 
     <script>
@@ -133,7 +145,7 @@
                 const button = document.createElement('button');
                 button.textContent = device;
                 button.dataset.device = device;
-                button.className = 'px-4 py-2 rounded-full transition-colors duration-200 border border-slate-300 hover:bg-slate-200 device-btn text-sm font-medium';
+                button.className = 'px-4 py-2 rounded-full transition-colors duration-200 border border-slate-300 bg-slate-50 hover:bg-slate-200 device-btn text-sm font-medium';
                 button.onclick = () => displayPricesForDevice(device);
                 deviceList.appendChild(button);
             });
@@ -142,6 +154,7 @@
 
         function displayPricesForDevice(selectedDevice) {
             document.querySelectorAll('.device-btn').forEach(btn => {
+                // Použijeme toggle s druhým parametrem pro spolehlivé přidání/odebrání třídy
                 btn.classList.toggle('active', btn.dataset.device === selectedDevice);
             });
 
