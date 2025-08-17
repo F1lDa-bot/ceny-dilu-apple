@@ -3,8 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interaktivní přehled servisních úkonů</title>
+    <title>B2B Ceník Oprav v2.3</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse for CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,207 +16,213 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        .task-card {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        .progress-bar-value {
+            transition: width 0.5s ease-in-out;
         }
-        .task-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-        }
-        .copy-feedback {
-            position: absolute;
-            bottom: -28px; /* Upravena pozice pro lepší viditelnost */
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #22c55e; /* green-500 */
+        /* Vlastní styl pro aktivní tlačítko zařízení */
+        .device-btn.active {
+            background-color: #4f46e5; /* indigo-600 */
             color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            border-color: #4f46e5;
+        }
+        /* Animace pro zobrazení detailů */
+        #details-section {
+            transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+        }
+        .details-hidden {
             opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-            white-space: nowrap;
+            transform: translateY(20px);
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800">
+<body class="bg-slate-100 text-slate-800">
 
-    <div class="container mx-auto p-4 md:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Přehled servisních úkonů</h1>
-            <p class="mt-2 text-lg text-slate-600">Interaktivní nástroj pro rychlé vyhledávání SK kódů a popisů.</p>
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
+        
+        <!-- Hlavička -->
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Interaktivní Ceník Oprav</h1>
+            <p class="text-slate-600 mt-2">Vyberte zařízení ze seznamu pro zobrazení detailů a cen.</p>
         </header>
 
-        <div class="bg-white p-6 rounded-xl shadow-sm mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-1">
-                    <label for="search" class="block text-sm font-medium text-slate-700 mb-2">Vyhledat úkon (popis, SK):</label>
-                    <input type="text" id="search" placeholder="Např. reinstalace, S0003..." class="w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500">
-                </div>
-                <div class="md:col-span-2">
-                    <h3 class="text-sm font-medium text-slate-700 mb-2">Filtrovat podle kategorie:</h3>
-                    <div id="filter-buttons" class="flex flex-wrap gap-2">
-                    </div>
-                </div>
+        <!-- Sekce pro načítání dat -->
+        <div id="loading-section" class="w-full max-w-md mx-auto">
+            <p class="text-center text-lg font-medium mb-2">Načítání dat z databáze...</p>
+            <div class="w-full bg-slate-200 rounded-full h-2.5">
+                <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full progress-bar-value" style="width: 0%"></div>
             </div>
         </div>
 
-        <main>
-            <div id="tasks-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <!-- Hlavní obsah aplikace (zpočátku skrytý) -->
+        <main id="app-content" class="hidden">
+            <!-- Horní výběr zařízení -->
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold mb-4 text-slate-700 text-center md:text-xl">Vyberte model zařízení</h2>
+                <div id="device-list" class="flex items-center justify-center flex-wrap gap-3">
+                    <!-- Tlačítka zařízení se generují zde -->
+                </div>
             </div>
+
+            <!-- Sekce s detaily -->
+            <section>
+                <div id="details-section" class="details-hidden bg-white p-6 rounded-2xl shadow-lg">
+                    <!-- Placeholder, pokud není nic vybráno -->
+                    <div id="placeholder" class="text-center py-16">
+                        <svg class="mx-auto h-12 w-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                        </svg>
+                        <h3 class="mt-2 text-sm font-medium text-slate-900">Vyberte zařízení</h3>
+                        <p class="mt-1 text-sm text-slate-500">Ceník se zobrazí po výběru modelu z horního menu.</p>
+                    </div>
+                    <!-- Kontejner pro výsledky -->
+                    <div id="result-container" class="hidden">
+                        <!-- Zde se zobrazí obrázek a tabulka -->
+                    </div>
+                </div>
+            </section>
         </main>
     </div>
 
     <script>
-        // --- NOVÁ DATA Z TABULKY ---
-        const serviceTasksData = [
-            { sku: 'S0001', internal: 'Diagnostika a čištění zařízení iOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0002', internal: 'Diagnostika a čištění zařízení MacBook', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0003', internal: 'reinstalace macOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0004', internal: 'odblokování EFI (macOS)', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0005', internal: 'záloha a 2x přenos dat iOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0006', internal: 'záloha a 2x přenos dat macOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0007', internal: 'diagnostika a čištění iOS zdarma', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0008', internal: 'přenos dat iOS / iPadOS / watchOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0009', internal: 'L1 iOS práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0010', internal: 'L2 iOS práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0011', internal: 'LAB1 macOS práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0012', internal: 'LAB2 macOS práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0013', internal: 'LAB3 macOS práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0014', internal: 'Diagnostika zařízení čištění iMac', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0015', internal: 'L1 iOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0016', internal: 'L2 iOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0017', internal: 'L3 iOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0018', internal: 'diagnostika a čištění vykoupených zařízení', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0019', internal: 'reinstalace iOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0020', internal: 'přenost dat macOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0021', internal: 'diagnostika a čištění zařízení iOS u nezáruční reklamace', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0022', internal: 'výměna teplovodivé pasty macOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0023', internal: 'LAB1 macOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0024', internal: 'LAB2 macOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0025', internal: 'LAB3 macOS výkup práce technika', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0026', internal: 'Apple iPhone sim tray', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0027', internal: 'diagnostika a čištění zařízení macOS u nezáručních reklamací', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0028', internal: 'diagnostika a čištění zařízení Audio u nezáručních reklamací', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0029', internal: 'výměna kláves u macOS zařízení', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0030', internal: 'iWant Onsite servis', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0031', internal: 'zamítnutí záruční reklamace', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0032', internal: 'diagnostika a čištění vykoupených zařízení a vratek', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0039', internal: 'cenový návrh a diagnostika zařízení audio pro pojišťovnu', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0040', internal: 'cenový návrh a diagnostika zařízení macOS pro pojišťovnu', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0041', internal: 'cenový návrh a diagnostika zařízení iOS pro pojišťovnu', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0100', internal: 'diagnostika a nacenění zařízení k výkupu', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0101', internal: 'diagnostika a čištění k výkupu servis', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0102', internal: 'diagnostika a čištění zařízení AirPods', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0048', internal: 'diagnostika závady / oprava', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' },
-            { sku: 'S0049', internal: 'zamítnutí záruční reklamace macOS', category: 'Servisní úkony', external: '', bonus: 0, ukony: 0, devices: '' }
-        ];
-        
-        document.addEventListener('DOMContentLoaded', () => {
-            const tasksGrid = document.getElementById('tasks-grid');
-            const filterButtonsContainer = document.getElementById('filter-buttons');
-            const searchInput = document.getElementById('search');
+        // --- KONFIGURACE ---
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQvnnYedZNOgB7B_n6P7S21BVmparjOOOgwRZlLUaRVHnb0b5bKyCQP0jmcTLxmHmfL2NONLGHDpMX9/pub?gid=1338732835&single=true&output=csv';
 
-            const categories = [...new Set(serviceTasksData.map(task => task.category))];
-            let activeFilter = 'Vše';
+        // --- ELEMENTY DOM ---
+        const loadingSection = document.getElementById('loading-section');
+        const progressBar = document.getElementById('progress-bar');
+        const appContent = document.getElementById('app-content');
+        const deviceList = document.getElementById('device-list');
+        const resultContainer = document.getElementById('result-container');
+        const detailsSection = document.getElementById('details-section');
+        const placeholder = document.getElementById('placeholder');
 
-            function renderCards() {
-                tasksGrid.innerHTML = '';
-                const searchTerm = searchInput.value.toLowerCase();
+        let repairData = [];
 
-                serviceTasksData
-                    .filter(task => (activeFilter === 'Vše' || task.category === activeFilter) && 
-                                   (task.internal.toLowerCase().includes(searchTerm) || 
-                                    task.sku.toLowerCase().includes(searchTerm)))
-                    .forEach(task => {
-                        const card = document.createElement('div');
-                        card.className = 'task-card bg-white p-5 rounded-lg shadow-md border border-slate-200 flex flex-col justify-between';
-                        
-                        const categoryBgClass = 'bg-slate-100';
-                        const categoryTextClass = 'text-slate-800';
-
-                        // --- ZJEDNODUŠENÝ VZHLED KARTY ---
-                        card.innerHTML = `
-                            <div>
-                                <span class="inline-block ${categoryBgClass} ${categoryTextClass} text-xs font-semibold px-2.5 py-0.5 rounded-full mb-3">${task.category}</span>
-                                <h4 class="font-semibold text-slate-800 text-base">${task.internal}</h4>
-                            </div>
-                            <div class="relative text-center mt-4 pt-4 border-t border-slate-200">
-                                <span class="sku-item text-sm font-mono bg-slate-200 text-slate-700 px-3 py-1.5 rounded-md cursor-pointer hover:bg-slate-300" data-sku="${task.sku}">
-                                    SK: ${task.sku}
-                                </span>
-                                <div class="copy-feedback">Zkopírováno!</div>
-                            </div>
-                        `;
-                        
-                        tasksGrid.appendChild(card);
-                    });
-            }
-
-            function getActiveButtonClasses(category) {
-                if (category === 'Servisní úkony') {
-                    return ['bg-purple-600', 'text-white', 'font-semibold'];
-                }
-                // Výchozí pro "Vše"
-                return ['bg-sky-600', 'text-white', 'font-semibold'];
-            }
-
-            function setupFilters() {
-                const buttons = ['Vše', ...categories];
-                const inactiveClasses = ['bg-slate-200', 'hover:bg-slate-300', 'text-slate-700'];
-
-                filterButtonsContainer.innerHTML = buttons.map(category => {
-                    const isActive = category === 'Vše';
-                    const activeClasses = getActiveButtonClasses('Vše').join(' ');
-                    const buttonClasses = isActive ? activeClasses : inactiveClasses.join(' ');
-                    return `<button class="filter-btn px-3 py-1.5 text-sm rounded-md transition-colors duration-200 ${buttonClasses}" data-category="${category}">${category}</button>`;
-                }).join('');
-
-                let activeButton = filterButtonsContainer.querySelector('[data-category="Vše"]');
-
-                filterButtonsContainer.addEventListener('click', (e) => {
-                    const targetButton = e.target.closest('.filter-btn');
-                    if (!targetButton || targetButton === activeButton) return;
-
-                    const oldActiveClasses = getActiveButtonClasses(activeFilter);
-                    activeButton.classList.remove(...oldActiveClasses);
-                    activeButton.classList.add(...inactiveClasses);
-
-                    activeFilter = targetButton.dataset.category;
-                    activeButton = targetButton;
-                    const newActiveClasses = getActiveButtonClasses(activeFilter);
-                    activeButton.classList.remove(...inactiveClasses);
-                    activeButton.classList.add(...newActiveClasses);
-
-                    renderCards();
-                });
-            }
-
-            tasksGrid.addEventListener('click', (e) => {
-                if (e.target.classList.contains('sku-item')) {
-                    const skuToCopy = e.target.dataset.sku;
-                    
-                    navigator.clipboard.writeText(skuToCopy).then(() => {
-                        const feedback = e.target.nextElementSibling;
-                        if(feedback) {
-                            feedback.style.opacity = '1';
-                            setTimeout(() => {
-                               feedback.style.opacity = '0';
-                            }, 1500);
+        // --- HLAVNÍ FUNKCE ---
+        function fetchData() {
+            Papa.parse(CSV_URL, {
+                download: true, header: true, skipEmptyLines: true,
+                downloadRequest: (xhr) => {
+                    xhr.addEventListener('progress', (e) => {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            progressBar.style.width = `${percent}%`;
                         }
-                    }).catch(err => {
-                        console.error('Nepodařilo se zkopírovat SK kód:', err);
                     });
+                },
+                complete: (results) => {
+                    progressBar.style.width = `100%`;
+                    repairData = results.data;
+                    setTimeout(initializeApp, 400);
+                },
+                error: (err) => {
+                    console.error("Chyba při načítání CSV:", err);
+                    loadingSection.innerHTML = `<p class="text-red-500 text-center font-bold">Nepodařilo se načíst data.</p>`;
+                }
+            });
+        }
+
+        function initializeApp() {
+            loadingSection.classList.add('hidden');
+            appContent.classList.remove('hidden');
+
+            const devices = [...new Set(repairData.map(item => item.Device))];
+            
+            devices.forEach(device => {
+                const button = document.createElement('button');
+                button.textContent = device;
+                button.dataset.device = device;
+                button.className = 'px-4 py-2 rounded-full transition-colors duration-200 border border-slate-300 hover:bg-slate-200 device-btn text-sm font-medium';
+                button.onclick = () => displayPricesForDevice(device);
+                deviceList.appendChild(button);
+            });
+            setTimeout(() => detailsSection.classList.remove('details-hidden'), 100);
+        }
+
+        function displayPricesForDevice(selectedDevice) {
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.device === selectedDevice);
+            });
+
+            placeholder.classList.add('hidden');
+            resultContainer.classList.remove('hidden');
+
+            const devicePrices = repairData.filter(item => item.Device === selectedDevice);
+            const footnotes = new Set();
+            const imageUrl = devicePrices.length > 0 ? devicePrices[0].ImageURL : null;
+
+            devicePrices.forEach(item => {
+                for (let i = 1; i <= 4; i++) {
+                    const note = item[`Note${i}`];
+                    if (note && note.trim()) footnotes.add(note.trim());
                 }
             });
 
-            searchInput.addEventListener('input', renderCards);
+            const tableHTML = `
+                <table class="min-w-full divide-y divide-slate-200">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Komponenta</th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Cena opravy</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-slate-200">
+                        ${devicePrices.map(item => {
+                            let symbols = '';
+                            for (let i = 1; i <= 4; i++) {
+                                const symbol = item[`Symbol${i}`];
+                                if (symbol && symbol.trim()) symbols += symbol.trim();
+                            }
+                            return `
+                                <tr>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">${item.Component || ''}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-600 text-right font-semibold">${item.Price || ''}${symbols}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
 
-            renderCards();
-            setupFilters();
-        });
+            const footnotesHTML = footnotes.size > 0 ? `
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <h3 class="text-sm font-semibold text-slate-600 mb-2">Podmínky:</h3>
+                    <div class="text-xs text-slate-500 space-y-1">
+                        ${[...footnotes].map(note => `<p>${note}</p>`).join('')}
+                    </div>
+                </div>
+            ` : '';
+
+            const imageHTML = imageUrl ? `
+                <div class="bg-slate-100 rounded-lg p-4 flex justify-center items-center h-full">
+                    <img src="${imageUrl}" alt="${selectedDevice}" class="max-h-64 object-contain" onerror="this.style.display='none'">
+                </div>
+            ` : '';
+
+            resultContainer.innerHTML = `
+                <h2 class="text-2xl font-bold text-slate-800 mb-6">${selectedDevice}</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 md:gap-8">
+                    <!-- Levý sloupec pro obrázek -->
+                    <div class="md:col-span-1 mb-6 md:mb-0">
+                        ${imageHTML}
+                    </div>
+                    <!-- Pravý sloupec pro tabulku a poznámky -->
+                    <div class="md:col-span-2">
+                        <div class="overflow-x-auto">
+                            ${tableHTML}
+                        </div>
+                        ${footnotesHTML}
+                    </div>
+                </div>
+            `;
+            
+            detailsSection.classList.add('details-hidden');
+            setTimeout(() => detailsSection.classList.remove('details-hidden'), 50);
+        }
+
+        // --- SPUŠTĚNÍ ---
+        document.addEventListener('DOMContentLoaded', fetchData);
     </script>
 </body>
 </html>
